@@ -105,6 +105,7 @@ void test_allocs_and_frees_match()
     struct s2 * s2;
     int n = 0;
     set_faill_alloc_after(0);
+    
     do 
     {
         assert(allocs == 0);    
@@ -114,7 +115,8 @@ void test_allocs_and_frees_match()
             assert(allocs == 0);
         
         set_faill_alloc_after(++n);
-    } while(!s2);
+    } 
+    while(!s2);
     
     destroy_s2(s2);    
     assert(allocs == 0);
@@ -149,9 +151,9 @@ void * test_return_after_first_null()
 }
 
 int main()
-{
-    TEST(test_allocs_and_frees_match);
+{    
     TEST(test_free_and_return_null_when_track_buffer_is_full);
     TEST(test_return_after_first_null);
+    TEST(test_allocs_and_frees_match);
     return 0;
 }

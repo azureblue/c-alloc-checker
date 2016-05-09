@@ -2,32 +2,27 @@
 #define ALLOC_CHECK_H
 
 #include <setjmp.h>
-#include <stdio.h>
 #include <inttypes.h>
-
-#define checked_allocator_default_size 100
 
 void m_free(void * ptr);
 
-#define clean_and_return_null() longjmp(__checked_allocator_jmp_buf, 1)
+struct alloc_check_context
+{
+    jmp_buf jmpbuf;
+    const int size;
+    volatile int idx;    
+    volatile intptr_t * ptrs;
+};
 
 /*
- * This macro implicitly sets jmp_buf, declares a few variables 
+ * This macro implicitly sets a jmp_buf, declares a few variables 
  * and an array of pointers in the local scope that will be used 
  * to track and free pointers that are passed the *check* macro.
  */
-#define checked_allocation(size)                                                                                            \
-jmp_buf __checked_allocator_jmp_buf;                                                                                        \
-const int __checked_allocator_size = (size);                                                                                \
-volatile intptr_t __checked_allocator_ptrs[__checked_allocator_size];                                                       \
-volatile int __checked_allocator_idx = 0;                                                                                   \
-void * __checked_allocator_ptr;                                                                                             \
-if (setjmp(__checked_allocator_jmp_buf))                                                                                    \
-{                                                                                                                           \
-    for (int i = 0; i < __checked_allocator_idx; i++)                                                                       \
-        m_free ((void *) __checked_allocator_ptrs[i]);                                                                      \
-    return NULL;                                                                                                            \
-}
+#define checked_allocation(buf_size)                                                                                                \
+volatile intptr_t __alloc_check_ptrs[buf_size];                                                                                     \
+struct alloc_check_context __alloc_check_context = {.idx = 0, .size = buf_size, .ptrs = __alloc_check_ptrs};                        \
+if (setjmp(__alloc_check_context.jmpbuf)) return (__alloc_check_free_pointers(&__alloc_check_context), NULL);
 
 /*
  * Macro that *alters control flow* by causing the function, inside
@@ -40,13 +35,39 @@ if (setjmp(__checked_allocator_jmp_buf))                                        
  * The use of this macro must be preceded by the use of *checked_allocation;* 
  * in the context of the surrounding function.
  */
-#define check(pointer)                                                                                                      \
-(                                                                                                                           \
-    __checked_allocator_ptr = __checked_allocator_idx == __checked_allocator_size ?                                         \
-        (longjmp(__checked_allocator_jmp_buf, 1), NULL) : pointer,                                                          \
-    __checked_allocator_ptrs[__checked_allocator_idx++] = (intptr_t) __checked_allocator_ptr,                               \
-    !__checked_allocator_ptr ?                                                                                              \
-        (longjmp(__checked_allocator_jmp_buf, 1), NULL) : __checked_allocator_ptr                                           \
+#define check(pointer)                                                                                                              \
+(                                                                                                                                   \
+    !__alloc_check_check_idx(&__alloc_check_context)                                                                                \
+        ? __alloc_check_longjmp_clean(&__alloc_check_context) : __alloc_check_check_pointer(pointer, &__alloc_check_context)        \
 )
+
+static void * __alloc_check_longjmp_clean(struct alloc_check_context * context)
+{
+    longjmp(context->jmpbuf, 1);
+    return NULL;
+}
+
+static int __alloc_check_check_idx(struct alloc_check_context * context)
+{
+    return context->idx < context->size;
+}
+
+static void * __alloc_check_check_pointer(void * pointer, struct alloc_check_context * context)
+{    
+    context->ptrs[context->idx++] = (intptr_t) pointer;
+    if (!pointer)
+        __alloc_check_longjmp_clean(context);
+    
+    return pointer;
+}
+
+static void __alloc_check_free_pointers(struct alloc_check_context * context)
+{
+    for (int i = 0; i < context->idx; i++)
+    {
+        m_free ((void *) context->ptrs[i]);
+        context->ptrs[i] = (intptr_t) NULL;
+    }
+}
 
 #endif /* ALLOC_CHECK_H */
