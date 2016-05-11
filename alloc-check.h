@@ -1,10 +1,12 @@
 #ifndef ALLOC_CHECK_H
 #define ALLOC_CHECK_H
 
-#include <setjmp.h>
 #include <inttypes.h>
+#include <setjmp.h>
 
-void m_free(void * ptr);
+#define alloc_check_free_function m_free
+
+extern void alloc_check_free_function(void *);
 
 struct alloc_check_context
 {
@@ -15,8 +17,8 @@ struct alloc_check_context
 };
 
 /*
- * This macro implicitly sets a jmp_buf, declares a few variables 
- * and an array of pointers in the local scope that will be used 
+ * This macro implicitly declares an array of length buff_size (variable-length array), 
+ * alloc_check_context struct and sets jmp_buf in the local scope that will be used 
  * to track and free pointers that are passed the *check* macro.
  */
 #define checked_allocation(buf_size)                                                                                                \
@@ -37,7 +39,7 @@ if (setjmp(__alloc_check_context.jmpbuf)) return (__alloc_check_free_pointers(&_
  */
 #define check(pointer)                                                                                                              \
 (                                                                                                                                   \
-    !__alloc_check_check_idx(&__alloc_check_context)                                                                                \
+    !__alloc_check_idx_within_range(&__alloc_check_context)                                                                         \
         ? __alloc_check_longjmp_clean(&__alloc_check_context) : __alloc_check_check_pointer(pointer, &__alloc_check_context)        \
 )
 
@@ -47,7 +49,7 @@ static void * __alloc_check_longjmp_clean(struct alloc_check_context * context)
     return NULL;
 }
 
-static int __alloc_check_check_idx(struct alloc_check_context * context)
+static int __alloc_check_idx_within_range(struct alloc_check_context * context)
 {
     return context->idx < context->size;
 }
@@ -64,10 +66,9 @@ static void * __alloc_check_check_pointer(void * pointer, struct alloc_check_con
 static void __alloc_check_free_pointers(struct alloc_check_context * context)
 {
     for (int i = 0; i < context->idx; i++)
-    {
-        m_free ((void *) context->ptrs[i]);
-        context->ptrs[i] = (intptr_t) NULL;
-    }
+        alloc_check_free_function ((void *) context->ptrs[i]);
+
+    context->idx = 0;
 }
 
 #endif /* ALLOC_CHECK_H */

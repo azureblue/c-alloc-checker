@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <assert.h>
+#include <stdbool.h>
 #include <stdio.h>
 
 #include "alloc-check.h"
@@ -27,6 +28,7 @@ void * m_alloc(size_t size)
         return NULL;
   
     allocs++;
+    
     void * ma = malloc(size);
     
     if (!ma)
@@ -104,7 +106,7 @@ void test_allocs_and_frees_match()
 {
     struct s2 * s2;
     int n = 0;
-    set_faill_alloc_after(0);
+    set_faill_alloc_after(0);    
     
     do 
     {
@@ -119,6 +121,7 @@ void test_allocs_and_frees_match()
     while(!s2);
     
     destroy_s2(s2);    
+    assert(n > 1);
     assert(allocs == 0);
 }
 
@@ -147,7 +150,9 @@ void * test_return_after_first_null()
     assert(ptr);
     
     void * ptr2 = check(NULL);
-    assert(0 == 1);
+    
+    // we shouldn't be here
+    assert(false);
 }
 
 int main()

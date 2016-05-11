@@ -1,5 +1,8 @@
 #include <stdio.h>
+
 #define TEST(testname){printf(#testname); testname(); printf(": OK\n");}
+
+ void m_free(void * ptr);
 
 struct s1
 {
