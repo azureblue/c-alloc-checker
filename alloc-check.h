@@ -51,6 +51,8 @@ if (setjmp(__alloc_check_context.jmpbuf)) return (alloc_check_free_pointers(&__a
 #define check_alloc(size_t_s)                                                                                                       \
     check_ptr(alloc_check_alloc_function(size_t_s))
 
+#define free_checked_ptrs()                                                                                                         \
+    alloc_check_free_pointers(&__alloc_check_context)
 
 void alloc_check_longjmp_clean(struct alloc_check_context *);
 

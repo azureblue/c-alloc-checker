@@ -20,11 +20,6 @@ void * alloc_check_ptr(void * ptr, struct alloc_check_context * context)
     return ptr;
 }
 
-void * alloc_check_alloc(size_t size, struct alloc_check_context * context)
-{    
-    return alloc_check_ptr(alloc_check_alloc_function(size), context);
-}
-
 void alloc_check_free_pointers(struct alloc_check_context * context)
 {
     for (int i = 0; i < context->idx; i++)
