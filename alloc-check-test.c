@@ -41,7 +41,7 @@ struct s1 * create_s1()
 {
     checked_allocation(20);
     
-    struct s1 * s1 = check(m_alloc(sizeof (struct s1)));
+    struct s1 * s1 = check_ptr(m_alloc(sizeof (struct s1)));
     s1->a = 0;
     s1->b = 1;
     
@@ -53,15 +53,33 @@ struct s2 * create_s2()
     checked_allocation(20);
     
     int n = 10;
-    struct s2 * s2 = check(m_alloc(sizeof (struct s2)));
+    struct s2 * s2 = check_ptr(m_alloc(sizeof (struct s2)));
     s2->n = n;
-    s2->ar1 = check(m_alloc(sizeof (char) * 2));
-    s2->ar2 = check(m_alloc(sizeof (char) * 2));
-    s2->nested_st = check(create_s1());
-    s2->array_s1 = check(m_alloc(sizeof (struct s1 *) * n));
+    s2->ar1 = check_ptr(m_alloc(sizeof (char) * 2));
+    s2->ar2 = check_ptr(m_alloc(sizeof (char) * 2));
+    s2->nested_st = check_ptr(create_s1());
+    s2->array_s1 = check_ptr(m_alloc(sizeof (struct s1 *) * n));
     
     for (int i = 0; i < n; i++)
-        s2->array_s1[i] = check(create_s1());
+        s2->array_s1[i] = check_ptr(create_s1());
+    
+    return s2;
+}
+
+struct s2 * create_s2_with_check_alloc()
+{
+    checked_allocation(20);
+    
+    int n = 10;
+    struct s2 * s2 = check_alloc(sizeof (struct s2));
+    s2->n = n;
+    s2->ar1 = check_alloc(sizeof (char) * 2);
+    s2->ar2 = check_alloc(sizeof (char) * 2);
+    s2->nested_st = check_ptr(create_s1());
+    s2->array_s1 = check_alloc(sizeof (struct s1 *) * n);
+    
+    for (int i = 0; i < n; i++)
+        s2->array_s1[i] = check_ptr(create_s1());
     
     return s2;
 }
@@ -86,10 +104,10 @@ int ** create_arrays(int n, int check_buffer)
 {
     checked_allocation(check_buffer);
     
-    int ** arrays = check(m_alloc(sizeof (int *) * n));
+    int ** arrays = check_ptr(m_alloc(sizeof (int *) * n));
     
     for (int i = 0; i < n; i++)
-        arrays[i] = check(m_alloc(sizeof (int) * 10));
+        arrays[i] = check_ptr(m_alloc(sizeof (int) * 10));
     
     return arrays;
 }
@@ -125,6 +143,30 @@ void test_allocs_and_frees_match()
     assert(allocs == 0);
 }
 
+void test_allocs_and_frees_match_check_alloc()
+{
+    struct s2 * s2;
+    int n = 0;
+    set_faill_alloc_after(0);    
+    
+    do 
+    {
+        assert(allocs == 0);    
+        s2 = create_s2_with_check_alloc();
+    
+        if (!s2)
+            assert(allocs == 0);
+        
+        set_faill_alloc_after(++n);
+    } 
+    while(!s2);
+    
+    destroy_s2(s2);    
+    assert(n > 1);
+    assert(allocs == 0);
+}
+
+
 void test_free_and_return_null_when_track_buffer_is_full()
 {
     set_faill_alloc_after(100);
@@ -146,10 +188,10 @@ void * test_return_after_first_null()
     
     char * ca = m_alloc(sizeof (char) * 2);
     
-    void * ptr = check(ca);
+    void * ptr = check_ptr(ca);
     assert(ptr);
     
-    void * ptr2 = check(NULL);
+    void * ptr2 = check_ptr(NULL);
     
     // we shouldn't be here
     assert(false);
@@ -160,5 +202,6 @@ int main()
     TEST(test_free_and_return_null_when_track_buffer_is_full);
     TEST(test_return_after_first_null);
     TEST(test_allocs_and_frees_match);
+    TEST(test_allocs_and_frees_match_check_alloc);
     return 0;
 }
