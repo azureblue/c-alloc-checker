@@ -1,16 +1,15 @@
 #ifndef ALLOC_CHECK_H
 #define ALLOC_CHECK_H
-
 #include <inttypes.h>
 #include <setjmp.h>
 #include <stdbool.h>
 #include <stddef.h>
 
-#define alloc_check_free_function m_free
 #define alloc_check_alloc_function m_alloc
+#define alloc_check_free_function m_free
 
-extern void alloc_check_free_function(void *);
 extern void * alloc_check_alloc_function(size_t size);
+extern void alloc_check_free_function(void *);
 
 struct alloc_check_context
 {
@@ -31,11 +30,10 @@ struct alloc_check_context __alloc_check_context = {.idx = 0, .size = buf_size, 
 if (setjmp(__alloc_check_context.jmpbuf)) return (alloc_check_free_pointers(&__alloc_check_context), NULL);
 
 /*
- * Macros that *alter control flow* by causing the function, inside
- * which they have been used, to *return* NULL if the *ptr* expression
- * evaluates to NULL or alloc_check_alloc_function returns NULL (is case of check_alloc).
- * Before the return it frees all pointers that were previously passed to *check_ptr* 
- * or *check_alloc* in the context of the local scope.
+ * Macros that *alter control flow* by causing the function, inside which they have been used, 
+ * to *return* NULL if the *ptr* expression evaluates to NULL or alloc_check_alloc_function 
+ * returns NULL (is case of check_alloc). Before the return it frees all pointers that were 
+ * previously passed to *check_ptr* or *check_alloc* in the context of the local scope.
  *
  * The use of this macro must be preceded by the use of *checked_allocation* 
  * in the context of the surrounding function.
@@ -45,7 +43,7 @@ if (setjmp(__alloc_check_context.jmpbuf)) return (alloc_check_free_pointers(&__a
 
 /*
  * Passes alloc_check_alloc_function(size_t_s) to check_ptr(ptr).
- * 
+ *  * 
  * @see check_ptr(ptr)
  */
 #define check_alloc(size_t_s)                                                                                                       \

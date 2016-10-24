@@ -1,4 +1,4 @@
-#include "alloc-check.h"
+#include "alloc_check.h"
 
 void alloc_check_longjmp_clean(struct alloc_check_context * context)
 {

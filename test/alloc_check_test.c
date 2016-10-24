@@ -2,9 +2,24 @@
 #include <assert.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include "../alloc_check.h"
 
-#include "alloc-check.h"
-#include "alloc-check-test.h"
+#define TEST(testname){printf(#testname); testname(); printf(": OK\n");}
+
+struct s1
+{
+    int a;
+    int b;
+};
+
+struct s2
+{
+    int n;
+    char * ar1;
+    int * ar2;
+    struct s1 * nested_st;
+    struct s1 ** array_s1;
+};
 
 static int allocs = 0;
 static int fail_alloc_after = 0;
@@ -41,29 +56,11 @@ struct s1 * create_s1()
 {
     checked_allocation(20);
     
-    struct s1 * s1 = check_ptr(m_alloc(sizeof (struct s1)));
+    struct s1 * s1 = check_alloc(sizeof (struct s1));
     s1->a = 0;
     s1->b = 1;
     
     return s1;
-}
-
-struct s2 * create_s2()
-{
-    checked_allocation(20);
-    
-    int n = 10;
-    struct s2 * s2 = check_ptr(m_alloc(sizeof (struct s2)));
-    s2->n = n;
-    s2->ar1 = check_ptr(m_alloc(sizeof (char) * 2));
-    s2->ar2 = check_ptr(m_alloc(sizeof (char) * 2));
-    s2->nested_st = check_ptr(create_s1());
-    s2->array_s1 = check_ptr(m_alloc(sizeof (struct s1 *) * n));
-    
-    for (int i = 0; i < n; i++)
-        s2->array_s1[i] = check_ptr(create_s1());
-    
-    return s2;
 }
 
 struct s2 * create_s2_with_check_alloc()
@@ -71,10 +68,10 @@ struct s2 * create_s2_with_check_alloc()
     checked_allocation(20);
     
     int n = 10;
-    struct s2 * s2 = check_alloc(sizeof (struct s2));
+    struct s2 * s2 = check_ptr(m_alloc(sizeof (struct s2)));
     s2->n = n;
     s2->ar1 = check_alloc(sizeof (char) * 2);
-    s2->ar2 = check_alloc(sizeof (char) * 2);
+    s2->ar2 = check_ptr(m_alloc(sizeof (char) * 2));
     s2->nested_st = check_ptr(create_s1());
     s2->array_s1 = check_alloc(sizeof (struct s1 *) * n);
     
@@ -129,7 +126,7 @@ void test_allocs_and_frees_match()
     do 
     {
         assert(allocs == 0);    
-        s2 = create_s2();
+        s2 = create_s2_with_check_alloc();
     
         if (!s2)
             assert(allocs == 0);
@@ -167,7 +164,7 @@ void test_allocs_and_frees_match_check_alloc()
 }
 
 
-void test_free_and_return_null_when_track_buffer_is_full()
+void test_free_and_return_null_when_ptr_buffer_is_full()
 {
     set_faill_alloc_after(100);
     assert(allocs == 0);
@@ -195,13 +192,13 @@ void * test_return_after_first_null()
     
     // we shouldn't be here
     assert(false);
+    return ptr2;
 }
 
 int main()
 {    
-    TEST(test_free_and_return_null_when_track_buffer_is_full);
-    TEST(test_return_after_first_null);
     TEST(test_allocs_and_frees_match);
-    TEST(test_allocs_and_frees_match_check_alloc);
+    TEST(test_return_after_first_null);
+    TEST(test_free_and_return_null_when_ptr_buffer_is_full);
     return 0;
 }
