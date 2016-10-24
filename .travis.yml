@@ -1,0 +1,9 @@
+language: c
+
+compiler: gcc
+
+env:
+  - CC_O=-O0
+  - CC_O=-O3
+     
+script: cd test && make test
