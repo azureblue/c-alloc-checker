@@ -1,28 +1,27 @@
+#include "../alloc_check.h"
 #include <stdlib.h>
 #include <assert.h>
-#include <stdbool.h>
 #include <stdio.h>
-#include "../alloc_check.h"
 
 #define TEST(testname){printf(#testname); testname(); printf(": OK\n");}
 
-struct s1
+struct simple_struct
 {
     int a;
     int b;
 };
 
-struct s2
+struct complex_struct
 {
     int n;
     char * ar1;
     int * ar2;
-    struct s1 * nested_st;
-    struct s1 ** array_s1;
+    struct simple_struct * nested_st;
+    struct simple_struct ** array_st;
 };
 
-static int allocs = 0;
-static int fail_alloc_after = 0;
+int allocs = 0;
+int fail_alloc_after = 0;
 
 void set_faill_alloc_after(int n_allocs)
 {
@@ -44,44 +43,44 @@ void * m_alloc(size_t size)
   
     allocs++;
     
-    void * ma = malloc(size);
+    void * mem = malloc(size);
     
-    if (!ma)
+    if (!mem)
         exit(-1);
   
-    return ma;
+    return mem;
 }
 
-struct s1 * create_s1()
+struct simple_struct * create_simple_struct()
 {
     checked_allocation(20);
     
-    struct s1 * s1 = check_alloc(sizeof (struct s1));
-    s1->a = 0;
-    s1->b = 1;
+    struct simple_struct * sim = check_alloc(sizeof (struct simple_struct));
+    sim->a = 0;
+    sim->b = 1;
     
-    return s1;
+    return sim;
 }
 
-struct s2 * create_s2_with_check_alloc()
+struct complex_struct * create_complex_struct_with_check_alloc()
 {
     checked_allocation(20);
     
     int n = 10;
-    struct s2 * s2 = check_ptr(m_alloc(sizeof (struct s2)));
-    s2->n = n;
-    s2->ar1 = check_alloc(sizeof (char) * 2);
-    s2->ar2 = check_ptr(m_alloc(sizeof (char) * 2));
-    s2->nested_st = check_ptr(create_s1());
-    s2->array_s1 = check_alloc(sizeof (struct s1 *) * n);
+    struct complex_struct * com = check_ptr(m_alloc(sizeof (struct complex_struct)));
+    com->n = n;
+    com->ar1 = check_alloc(sizeof (char) * 2);
+    com->ar2 = check_ptr(m_alloc(sizeof (char) * 2));
+    com->nested_st = check_ptr(create_simple_struct());
+    com->array_st = check_alloc(sizeof (struct simple_struct *) * n);
     
     for (int i = 0; i < n; i++)
-        s2->array_s1[i] = check_ptr(create_s1());
+        com->array_st[i] = check_ptr(create_simple_struct());
     
-    return s2;
+    return com;
 }
 
-void destroy_s2(struct s2 * st)
+void destroy_complex_struct(struct complex_struct * st)
 {
     if (!st)
         return;
@@ -91,9 +90,9 @@ void destroy_s2(struct s2 * st)
     m_free(st->nested_st);
     
     for (int i = 0; i < st->n; i++)
-        m_free(st->array_s1[i]);
+        m_free(st->array_st[i]);
     
-    m_free(st->array_s1);
+    m_free(st->array_st);
     m_free(st);
 }
 
@@ -119,46 +118,46 @@ void destroy_arrays(int ** arrays, int n)
 
 void test_allocs_and_frees_match()
 {
-    struct s2 * s2;
+    struct complex_struct * com;
     int n = 0;
     set_faill_alloc_after(0);    
     
     do 
     {
         assert(allocs == 0);    
-        s2 = create_s2_with_check_alloc();
+        com = create_complex_struct_with_check_alloc();
     
-        if (!s2)
+        if (!com)
             assert(allocs == 0);
         
         set_faill_alloc_after(++n);
     } 
-    while(!s2);
+    while(!com);
     
-    destroy_s2(s2);    
+    destroy_complex_struct(com);    
     assert(n > 1);
     assert(allocs == 0);
 }
 
 void test_allocs_and_frees_match_check_alloc()
 {
-    struct s2 * s2;
+    struct complex_struct * com;
     int n = 0;
     set_faill_alloc_after(0);    
     
     do 
     {
         assert(allocs == 0);    
-        s2 = create_s2_with_check_alloc();
+        com = create_complex_struct_with_check_alloc();
     
-        if (!s2)
+        if (!com)
             assert(allocs == 0);
         
         set_faill_alloc_after(++n);
     } 
-    while(!s2);
+    while(!com);
     
-    destroy_s2(s2);    
+    destroy_complex_struct(com);
     assert(n > 1);
     assert(allocs == 0);
 }
@@ -175,7 +174,7 @@ void test_free_and_return_null_when_ptr_buffer_is_full()
     int ** arrs = create_arrays(2, 3);
     assert(arrs != NULL);
     
-    destroy_arrays(arrs, 2);    
+    destroy_arrays(arrs, 2);
     assert(allocs == 0);
 }
 
@@ -191,7 +190,8 @@ void * test_return_after_first_null()
     void * ptr2 = check_ptr(NULL);
     
     // we shouldn't be here
-    assert(false);
+    assert(0);
+    
     return ptr2;
 }
 
@@ -200,5 +200,6 @@ int main()
     TEST(test_allocs_and_frees_match);
     TEST(test_return_after_first_null);
     TEST(test_free_and_return_null_when_ptr_buffer_is_full);
+    
     return 0;
 }
