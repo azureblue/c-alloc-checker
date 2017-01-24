@@ -53,9 +53,9 @@ void * m_alloc(size_t size)
 
 struct simple_struct * create_simple_struct()
 {
-    checked_allocation(20);
+    checked_alloc(20);
     
-    struct simple_struct * sim = check_alloc(sizeof (struct simple_struct));
+    struct simple_struct * sim = check_alloc(struct simple_struct);
     sim->a = 0;
     sim->b = 1;
     
@@ -64,21 +64,40 @@ struct simple_struct * create_simple_struct()
 
 struct complex_struct * create_complex_struct_with_check_alloc()
 {
-    checked_allocation(20);
+    checked_alloc(20);
     
     int n = 10;
-    struct complex_struct * com = check_ptr(m_alloc(sizeof (struct complex_struct)));
+    struct complex_struct * com = check_alloc(struct complex_struct);
     com->n = n;
-    com->ar1 = check_alloc(sizeof (char) * 2);
-    com->ar2 = check_ptr(m_alloc(sizeof (char) * 2));
+    com->ar1 = check_alloc_n(char, 2);
+    com->ar2 = check_alloc_n(char, 2);
     com->nested_st = check_ptr(create_simple_struct());
-    com->array_st = check_alloc(sizeof (struct simple_struct *) * n);
+    com->array_st = check_alloc_n(struct simple_struct *, n);
     
     for (int i = 0; i < n; i++)
         com->array_st[i] = check_ptr(create_simple_struct());
     
     return com;
 }
+
+void destroy_complex_struct(struct complex_struct * st);
+
+void destroy_complex_struct_raw(memptr_t st) 
+{
+    destroy_complex_struct(st);
+}
+
+
+struct complex_struct ** create_complex_structs_with_destructors(int len) {
+    checked_alloc(len + 1);
+    
+    struct complex_struct ** structs = check_alloc_n(struct complex_struct *, len);
+    for (int i = 0; i < len; i++)
+        structs[i] = check_ptr_destr(create_complex_struct_with_check_alloc(), destroy_complex_struct_raw);
+    
+    return structs;
+
+} 
 
 void destroy_complex_struct(struct complex_struct * st)
 {
@@ -98,12 +117,12 @@ void destroy_complex_struct(struct complex_struct * st)
 
 int ** create_arrays(int n, int check_buffer)
 {
-    checked_allocation(check_buffer);
+    checked_alloc(check_buffer);
     
     int ** arrays = check_ptr(m_alloc(sizeof (int *) * n));
     
     for (int i = 0; i < n; i++)
-        arrays[i] = check_ptr(m_alloc(sizeof (int) * 10));
+        arrays[i] = check_alloc_n(int, 10);
     
     return arrays;
 }
@@ -139,16 +158,16 @@ void test_allocs_and_frees_match()
     assert(allocs == 0);
 }
 
-void test_allocs_and_frees_match_check_alloc()
+void test_allocs_and_frees_match_destructors()
 {
-    struct complex_struct * com;
+    struct complex_struct ** com;
     int n = 0;
     set_faill_alloc_after(0);    
     
     do 
     {
         assert(allocs == 0);    
-        com = create_complex_struct_with_check_alloc();
+        com = create_complex_structs_with_destructors(5);
     
         if (!com)
             assert(allocs == 0);
@@ -157,7 +176,11 @@ void test_allocs_and_frees_match_check_alloc()
     } 
     while(!com);
     
-    destroy_complex_struct(com);
+    for (int i = 0; i < 5; i++)
+        destroy_complex_struct(com[i]);
+    
+    m_free(com);
+
     assert(n > 1);
     assert(allocs == 0);
 }
@@ -180,7 +203,7 @@ void test_free_and_return_null_when_ptr_buffer_is_full()
 
 void * test_return_after_first_null()
 {    
-    checked_allocation(5);
+    checked_alloc(5);
     
     char * ca = m_alloc(sizeof (char) * 2);
     
@@ -198,6 +221,7 @@ void * test_return_after_first_null()
 int main()
 {    
     TEST(test_allocs_and_frees_match);
+    TEST(test_allocs_and_frees_match_destructors);
     TEST(test_return_after_first_null);
     TEST(test_free_and_return_null_when_ptr_buffer_is_full);
     

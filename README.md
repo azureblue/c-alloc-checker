@@ -17,18 +17,70 @@ It's constructor funciton may look like this:
 ```C
 struct my_struct * create_my_struct(int len)
 {
-    check_allocation(4);
-    struct my_struct * my = check_alloc(sizeof (struct my_struct));
+    check_alloc(4);
+    struct my_struct * my = check_alloc(struct my_struct);
     my->length = len;
-    my->array_1 = check_alloc(sizeof (int) * len);
-    my->array_2 = check_alloc(sizeof (float) * len);
+    my->array_1 = check_alloc_n(int, len);
+    my->array_2 = check_alloc_n(float, len);
     // or
     my->array_3 = check_ptr(malloc(sizeof (float) * len));
     
     return my;
 }
 ```
-instead of:
+
+Another example:
+```C
+struct matrix_with_array
+{
+    int m;
+    int n;
+    double * data;
+};
+
+struct matrix_with_array * create_matrix(int m, int n)
+{
+    checked_alloc(2);
+    struct matrix_with_array * mat = check_alloc(struct matrix_with_array);
+    mat->data = check_alloc_n(double, m * n);
+    mat->m = m;
+    mat->n = n;
+    return mat;
+}
+
+void destroy_matrix_with_array(void * m_ptr)
+{
+    struct matrix_with_array * m = m_ptr;
+    if (!m)
+        return;
+    
+    free(m->data);
+    free(m);
+}
+
+struct my_struct
+{
+    int length;
+    int * array_1;
+    struct matrix_with_array * matrix_array[];
+};
+
+struct my_struct * create_my_struct(int m, int n, int len)
+{
+    checked_alloc(2 + len);
+    struct my_struct * my = check_alloc_fam(struct my_struct, struct matrix_with_array, len);
+    
+    my->length = len;
+    my->array_1 = check_alloc_n(int, len);
+    
+    for (int i = 0; i < len; i++)
+        my->matrix_array[i] = check_ptr_destr(create_matrix(m, n), destroy_matrix_with_array);
+    
+    return my;
+}
+```
+
+The old way:
 ```C
 struct my_struct * create_my_struct_the_standard_way1(int len)
 {
@@ -81,50 +133,5 @@ cleanup:
     free(my->array_3);
     free(my);
     return NULL;
-}
-```
-
-Of course it works with any other function returning a pointer:
-```C
-struct matrix_with_flexible_array
-{
-    int m;
-    int n;
-    double data[];
-};
-
-struct matrix_with_flexible_array * create_matrix(int m, int n)
-{
-    struct matrix_with_flexible_array * mat = 
-        malloc(sizeof (struct matrix_with_flexible_array) + sizeof (double) * m * n);
-    
-    if (!mat)
-        return NULL;    
-    
-    mat->m = m;
-    mat->n = n;
-    return mat;
-}
-
-struct my_struct
-{
-    int length;
-    int * array_1;
-    struct matrix_with_flexible_array * matrix_array[];
-};
-
-struct my_struct * create_my_struct(int m, int n, int len)
-{
-    check_allocation(2 + len);
-    struct my_struct * my = check_alloc(sizeof (struct my_struct) 
-        + sizeof (struct matrix_with_flexible_array *) * len);
-    
-    my->length = len;
-    my->array_1 = check_alloc(sizeof (int) * len);
-    
-    for (int i = 0; i < len; i++)
-        my->matrix_array[i] = check_ptr(create_matrix(m, n));
-    
-    return my;
 }
 ```
