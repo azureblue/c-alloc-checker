@@ -28,7 +28,7 @@ struct alloc_check_context
     volatile intptr_t _alloc_check_ptrs[buf_size];                                                          \
     volatile destructor_function_t _alloc_check_dstrs[buf_size];                                            \
     struct alloc_check_context _alloc_check_context = {buf_size, 0, _alloc_check_ptrs, _alloc_check_dstrs}; \
-    if (setjmp(_alloc_check_context.jmpbuf)) return (alloc_check_free_ptrs(&_alloc_check_context), NULL);
+    if (setjmp(_alloc_check_context.jmpbuf)) return (alloc_check_free_ptrs(&_alloc_check_context), NULL)
 
 #define check_ptr(ptr) (alloc_check_assert_range(&_alloc_check_context), alloc_check_ptr(&_alloc_check_context, ptr, NULL))
 #define check_ptr_destr(ptr, destr) (alloc_check_assert_range(&_alloc_check_context), alloc_check_ptr(&_alloc_check_context, ptr, destr))
